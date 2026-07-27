@@ -1,0 +1,6 @@
+# Install only the SDK for whichever provider you set in LLM_PROVIDER.
+# You don't need all three.
+
+google-generativeai   # for LLM_PROVIDER=gemini
+anthropic             # for LLM_PROVIDER=anthropic
+openai                # for LLM_PROVIDER=openai
