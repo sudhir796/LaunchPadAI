@@ -55,3 +55,7 @@ ehthumbs.db
 *.log
 tmp/
 temp/
+.env
+__pycache__/
+*.pyc
+sql_app.db
