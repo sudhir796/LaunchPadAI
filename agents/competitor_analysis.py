@@ -103,7 +103,13 @@ Web Search Evidence (Real Competitor & Product References):
 
 Analyze the competitive landscape and return the JSON object as instructed."""
 
-    raw_response = call_llm(SYSTEM_PROMPT, user_prompt, max_tokens=1000)
+    raw_response = call_llm(
+        SYSTEM_PROMPT,
+        user_prompt,
+        max_tokens=1000,
+        agent_name="competitor_analysis",
+        idea_id=idea_id,
+    )
     result = extract_json(raw_response)
 
     # Safety nets

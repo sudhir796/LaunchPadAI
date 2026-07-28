@@ -58,7 +58,13 @@ Target market: {target_market}
 
 Evaluate this idea and return the JSON object as instructed."""
 
-    raw_response = call_llm(SYSTEM_PROMPT, user_prompt, max_tokens=800)
+    raw_response = call_llm(
+        SYSTEM_PROMPT,
+        user_prompt,
+        max_tokens=800,
+        agent_name="idea_validator",
+        idea_id=idea_id,
+    )
     result = extract_json(raw_response)
 
     # Safety net: ensure idea_id always matches what was passed in,

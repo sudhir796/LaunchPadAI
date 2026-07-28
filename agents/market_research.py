@@ -90,7 +90,13 @@ Web Search Evidence (Real Market Reports & Data):
 
 Analyze the market landscape for this idea based on the search evidence provided and return the JSON object as instructed."""
 
-    raw_response = call_llm(SYSTEM_PROMPT, user_prompt, max_tokens=1000)
+    raw_response = call_llm(
+        SYSTEM_PROMPT,
+        user_prompt,
+        max_tokens=1000,
+        agent_name="market_research",
+        idea_id=idea_id,
+    )
     result = extract_json(raw_response)
 
     # Safety nets

@@ -69,7 +69,13 @@ Agent 5 Business Model Output:
 
 Synthesize this comprehensive startup intelligence into an investor-ready pitch deck and return the JSON object as instructed."""
 
-    raw_response = call_llm(SYSTEM_PROMPT, user_prompt, max_tokens=1500)
+    raw_response = call_llm(
+        SYSTEM_PROMPT,
+        user_prompt,
+        max_tokens=1500,
+        agent_name="pitch_deck",
+        idea_id=idea_id,
+    )
     result = extract_json(raw_response)
 
     # Safety nets

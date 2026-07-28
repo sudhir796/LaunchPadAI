@@ -100,7 +100,13 @@ Web Search Evidence (Real Venture Capital & Investor References):
 
 Match the best target investors for this startup and return the JSON object as instructed."""
 
-    raw_response = call_llm(SYSTEM_PROMPT, user_prompt, max_tokens=1000)
+    raw_response = call_llm(
+        SYSTEM_PROMPT,
+        user_prompt,
+        max_tokens=1000,
+        agent_name="investor_matching",
+        idea_id=idea_id,
+    )
     result = extract_json(raw_response)
 
     # Safety nets
