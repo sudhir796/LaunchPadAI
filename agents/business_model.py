@@ -31,6 +31,7 @@ Output (dict):
 }
 """
 
+import asyncio
 import json
 
 try:
@@ -56,7 +57,7 @@ The JSON object must have exactly these fields:
 """
 
 
-def run(input_data: dict) -> dict:
+async def run(input_data: dict) -> dict:
     idea_id = input_data.get("idea_id", "unknown")
     idea_description = input_data.get("idea_description", "")
     market_research = input_data.get("market_research", {})
@@ -76,7 +77,8 @@ Competitor Analysis (Agent 4 Output):
 
 Generate the strategic business model canvas and return the JSON object as instructed."""
 
-    raw_response = call_llm(
+    raw_response = await asyncio.to_thread(
+        call_llm,
         SYSTEM_PROMPT,
         user_prompt,
         max_tokens=1000,
@@ -129,5 +131,5 @@ if __name__ == "__main__":
         "market_research": sample_market_research,
         "competitor_analysis": sample_competitor_analysis,
     }
-    output = run(test_input)
+    output = asyncio.run(run(test_input))
     print(json.dumps(output, indent=2))

@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
-from database import get_db, SessionLocal
-import models
-import schemas
-import orchestrator
-import events
+from backend.database import get_db, SessionLocal
+from backend import models
+from backend import schemas
+from backend import orchestrator
+from backend import events
 import json
 
 router = APIRouter(prefix="/ideas", tags=["ideas"])
@@ -102,3 +102,41 @@ def retry_agent(idea_id: str, agent_name: str, background_tasks: BackgroundTasks
         
     background_tasks.add_task(start_retry_task, idea_id, agent_name)
     return {"status": "retry_started", "idea_id": idea_id, "agent_name": agent_name}
+
+
+@router.get("/{idea_id}/report")
+def download_idea_report(idea_id: str, db: Session = Depends(get_db)):
+    idea = db.query(models.Idea).filter(models.Idea.id == idea_id).first()
+    if not idea:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    agent_records = db.query(models.AgentOutput).filter(models.AgentOutput.idea_id == idea_id).all()
+    agent_outputs_map = {}
+    for record in agent_records:
+        if record.output_json:
+            agent_outputs_map[record.agent_name] = record.output_json
+
+    idea_data = {
+        "id": idea.id,
+        "title": idea.title,
+        "description": idea.description,
+        "target_market": idea.target_market,
+        "region": idea.region,
+        "sector": idea.sector,
+        "created_at": str(idea.created_at),
+    }
+
+    try:
+        from backend import report_generator
+        from fastapi import Response
+        pdf_bytes = report_generator.build_pdf_report(idea_data, agent_outputs_map)
+        filename = f"LaunchPad_Report_{idea_id[:8]}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF report: {str(e)}")

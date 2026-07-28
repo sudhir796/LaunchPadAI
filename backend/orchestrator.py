@@ -1,13 +1,13 @@
 import traceback
 import asyncio
 from sqlalchemy.orm import Session
-import models
-import events
+from backend import models
+from backend import events
 from agents import (
     idea_validator, patent_search, market_research,
     competitor_analysis, business_model, pitch_deck, investor_matching
 )
-
+from backend.database import Base
 def get_fallback_data(agent_name: str, idea_id: str) -> dict:
     note = " (fallback data used)"
     fallbacks = {
@@ -143,7 +143,7 @@ async def run_pipeline(idea_id: str, db_session: Session):
             
             # Wrap real agent calls in a timeout
             if agent_name in ["patent_search", "market_research", "competitor_analysis", "investor_matching"]:
-                output_json = await asyncio.wait_for(stage["module"].run(agent_input), timeout=10.0)
+                output_json = await asyncio.wait_for(stage["module"].run(agent_input), timeout=25.0)
             else:
                 output_json = await stage["module"].run(agent_input)
             
@@ -226,7 +226,7 @@ async def retry_agent(idea_id: str, agent_name: str, db_session: Session):
         agent_input = target_stage["build_input"](idea, outputs)
         
         if agent_name in ["patent_search", "market_research", "competitor_analysis", "investor_matching"]:
-            output_json = await asyncio.wait_for(target_stage["module"].run(agent_input), timeout=10.0)
+            output_json = await asyncio.wait_for(target_stage["module"].run(agent_input), timeout=25.0)
         else:
             output_json = await target_stage["module"].run(agent_input)
             

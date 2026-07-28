@@ -1,11 +1,12 @@
 """
-End-to-End Test Script for LaunchPad AI 7-Agent Pipeline
+End-to-End Test Script for LaunchPad AI 7-Agent Pipeline (Async)
 """
 
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import asyncio
 import json
 from agents import (
     idea_validator,
@@ -17,7 +18,7 @@ from agents import (
     investor_matching,
 )
 
-def test_full_pipeline():
+async def test_full_pipeline():
     print("=== STARTING LAUNCHPAD AI PIPELINE TEST ===")
     
     # Raw User Input
@@ -34,12 +35,12 @@ def test_full_pipeline():
 
     # Step 1: Idea Validator
     print("\n[1/7] Running Idea Validator...")
-    val_out = idea_validator.run(raw_idea)
+    val_out = await idea_validator.run(raw_idea)
     print(f"-> Validation Score: {val_out.get('validation_score')}/100")
 
     # Step 2: Patent & Prior Art Search
     print("\n[2/7] Running Patent Search...")
-    pat_out = patent_search.run({
+    pat_out = await patent_search.run({
         "idea_id": raw_idea["idea_id"],
         "idea_description": raw_idea["idea_description"],
         "keywords": ["food waste redistribution", "surplus food app", "campus food dispatch"]
@@ -48,7 +49,7 @@ def test_full_pipeline():
 
     # Step 3: Market Research
     print("\n[3/7] Running Market Research...")
-    mkt_out = market_research.run({
+    mkt_out = await market_research.run({
         "idea_id": raw_idea["idea_id"],
         "idea_description": raw_idea["idea_description"],
         "target_market": raw_idea["target_market"],
@@ -58,7 +59,7 @@ def test_full_pipeline():
 
     # Step 4: Competitor Analysis
     print("\n[4/7] Running Competitor Analysis...")
-    comp_out = competitor_analysis.run({
+    comp_out = await competitor_analysis.run({
         "idea_id": raw_idea["idea_id"],
         "idea_description": raw_idea["idea_description"],
         "market_research": mkt_out
@@ -67,7 +68,7 @@ def test_full_pipeline():
 
     # Step 5: Business Model Generator
     print("\n[5/7] Running Business Model Generator...")
-    bm_out = business_model.run({
+    bm_out = await business_model.run({
         "idea_id": raw_idea["idea_id"],
         "idea_description": raw_idea["idea_description"],
         "market_research": mkt_out,
@@ -77,7 +78,7 @@ def test_full_pipeline():
 
     # Step 6: Pitch Deck Generator
     print("\n[6/7] Running Pitch Deck Generator...")
-    pitch_out = pitch_deck.run({
+    pitch_out = await pitch_deck.run({
         "idea_id": raw_idea["idea_id"],
         "idea_validation": val_out,
         "market_research": mkt_out,
@@ -88,7 +89,7 @@ def test_full_pipeline():
 
     # Step 7: Investor Matching
     print("\n[7/7] Running Investor Matching...")
-    inv_out = investor_matching.run({
+    inv_out = await investor_matching.run({
         "idea_id": raw_idea["idea_id"],
         "sector": "FoodTech & Campus Sustainability",
         "business_model": bm_out
@@ -98,4 +99,4 @@ def test_full_pipeline():
     print("\n=== PIPELINE TEST COMPLETED SUCCESSFULLY! ===")
 
 if __name__ == "__main__":
-    test_full_pipeline()
+    asyncio.run(test_full_pipeline())

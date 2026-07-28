@@ -25,6 +25,7 @@ Output (dict):
 }
 """
 
+import asyncio
 import json
 
 try:
@@ -56,7 +57,7 @@ The JSON object must have exactly these fields:
 """
 
 
-def run(input_data: dict) -> dict:
+async def run(input_data: dict) -> dict:
     idea_id = input_data.get("idea_id", "unknown")
     sector = input_data.get("sector", "Technology")
     business_model = input_data.get("business_model", {})
@@ -69,9 +70,9 @@ def run(input_data: dict) -> dict:
     query1 = f"venture capital firms investing in {sector}".strip()
     query2 = f"top seed investors funds {sector} {value_proposition[:60]}".strip()
 
-    search_results = perform_web_search(query1, max_results=4)
+    search_results = await asyncio.to_thread(perform_web_search, query1, max_results=4)
     if len(search_results) < 2:
-        additional_results = perform_web_search(query2, max_results=3)
+        additional_results = await asyncio.to_thread(perform_web_search, query2, max_results=3)
         existing_urls = {r["url"] for r in search_results}
         for res in additional_results:
             if res["url"] not in existing_urls:
@@ -100,7 +101,8 @@ Web Search Evidence (Real Venture Capital & Investor References):
 
 Match the best target investors for this startup and return the JSON object as instructed."""
 
-    raw_response = call_llm(
+    raw_response = await asyncio.to_thread(
+        call_llm,
         SYSTEM_PROMPT,
         user_prompt,
         max_tokens=1000,
@@ -144,5 +146,5 @@ if __name__ == "__main__":
         "sector": "FoodTech & EdTech / Campus Sustainability",
         "business_model": sample_business_model,
     }
-    output = run(test_input)
+    output = asyncio.run(run(test_input))
     print(json.dumps(output, indent=2))

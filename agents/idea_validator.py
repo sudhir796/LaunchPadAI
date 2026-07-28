@@ -21,6 +21,8 @@ Output (dict):
 }
 """
 
+import asyncio
+
 try:
     from .llm_client import call_llm, extract_json
 except ImportError:
@@ -45,7 +47,7 @@ The JSON object must have exactly these fields:
 """
 
 
-def run(input_data: dict) -> dict:
+async def run(input_data: dict) -> dict:
     idea_id = input_data.get("idea_id", "unknown")
     idea_title = input_data.get("idea_title", "")
     idea_description = input_data.get("idea_description", "")
@@ -58,7 +60,8 @@ Target market: {target_market}
 
 Evaluate this idea and return the JSON object as instructed."""
 
-    raw_response = call_llm(
+    raw_response = await asyncio.to_thread(
+        call_llm,
         SYSTEM_PROMPT,
         user_prompt,
         max_tokens=800,
@@ -86,5 +89,5 @@ if __name__ == "__main__":
         "target_market": "College campuses and nearby low-income communities",
     }
     import json
-    output = run(test_input)
+    output = asyncio.run(run(test_input))
     print(json.dumps(output, indent=2))

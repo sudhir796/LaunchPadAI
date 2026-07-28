@@ -20,6 +20,7 @@ Output (dict):
 }
 """
 
+import asyncio
 import json
 
 try:
@@ -48,7 +49,7 @@ The JSON object must have exactly these fields:
 """
 
 
-def run(input_data: dict) -> dict:
+async def run(input_data: dict) -> dict:
     idea_id = input_data.get("idea_id", "unknown")
     idea_description = input_data.get("idea_description", "")
     target_market = input_data.get("target_market", "")
@@ -58,9 +59,9 @@ def run(input_data: dict) -> dict:
     query1 = f"{target_market} market size growth trends {region}".strip()
     query2 = f"{idea_description[:100]} industry report market trends".strip()
 
-    search_results = perform_web_search(query1, max_results=4)
+    search_results = await asyncio.to_thread(perform_web_search, query1, max_results=4)
     if len(search_results) < 2:
-        additional_results = perform_web_search(query2, max_results=3)
+        additional_results = await asyncio.to_thread(perform_web_search, query2, max_results=3)
         existing_urls = {r["url"] for r in search_results}
         for res in additional_results:
             if res["url"] not in existing_urls:
@@ -90,7 +91,8 @@ Web Search Evidence (Real Market Reports & Data):
 
 Analyze the market landscape for this idea based on the search evidence provided and return the JSON object as instructed."""
 
-    raw_response = call_llm(
+    raw_response = await asyncio.to_thread(
+        call_llm,
         SYSTEM_PROMPT,
         user_prompt,
         max_tokens=1000,
@@ -125,5 +127,5 @@ if __name__ == "__main__":
         "target_market": "College campuses and nearby low-income communities",
         "region": "North America",
     }
-    output = run(test_input)
+    output = asyncio.run(run(test_input))
     print(json.dumps(output, indent=2))

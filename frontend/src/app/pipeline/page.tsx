@@ -14,7 +14,7 @@ import { Agent5BusinessModel }from "@/components/agents/Agent5BusinessModel";
 import { Agent6PitchDeck }    from "@/components/agents/Agent6PitchDeck";
 import { Agent7Investors }    from "@/components/agents/Agent7Investors";
 
-import { Loader2, HelpCircle, ArrowLeft, Clock, CheckCircle2 } from "lucide-react";
+import { Loader2, HelpCircle, ArrowLeft, Clock, CheckCircle2, Download } from "lucide-react";
 import Link from "next/link";
 
 const STAGE_META: Record<number, { name: string; domain: string }> = {
@@ -214,9 +214,21 @@ export default function PipelinePage() {
                   </div>
                 )}
                 {state.status === "completed" && (
-                  <div className="flex items-center justify-center space-x-1.5 text-[9px] font-mono font-bold" style={{ color: "#4ade80" }}>
-                    <CheckCircle2 className="h-3 w-3" />
-                    <span>Complete</span>
+                  <div className="flex flex-col items-center space-y-2 mt-2">
+                    <div className="flex items-center justify-center space-x-1.5 text-[9px] font-mono font-bold" style={{ color: "#4ade80" }}>
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span>Complete</span>
+                    </div>
+                    <a
+                      href={`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/ideas/${state.idea_id}/report`}
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center space-x-1.5 w-full bg-[#C9A227] hover:bg-[#b8921f] text-[#0B1220] font-mono text-[9px] font-bold uppercase py-1.5 px-2 rounded transition-all mt-1"
+                    >
+                      <Download className="h-3 w-3" />
+                      <span>Download PDF</span>
+                    </a>
                   </div>
                 )}
               </div>

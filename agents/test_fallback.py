@@ -42,15 +42,16 @@ def test_simulated_fallback():
     # Gemini API key in .env has 0 free quota (429), so calling idea_validator with CACHE_ENABLED=false
     # will simulate a rate-limit on Gemini and automatically trigger [FALLBACK] to Groq!
     import os
+    import asyncio
     os.environ["CACHE_ENABLED"] = "false"
     
     print("\nExecuting idea_validator with simulated rate limit on Gemini...")
     from agents import idea_validator
-    res = idea_validator.run({
+    res = asyncio.run(idea_validator.run({
         "idea_id": "fallback-test-999",
         "idea_title": "Automated Campus Recycling",
         "idea_description": "Smart bin system using computer vision to sort campus recycling."
-    })
+    }))
     print("\nResult received from fallback provider:")
     print(json.dumps(res, indent=2))
     assert res["idea_id"] == "fallback-test-999"

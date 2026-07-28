@@ -1,12 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Agent7Output } from "@/types/agentContracts";
-import { Briefcase, Target, Sparkles, Download } from "lucide-react";
+import { Briefcase, Target, Sparkles, Download, Loader2 } from "lucide-react";
+import { usePipeline } from "@/context/PipelineContext";
 
 interface Props {
   data: Agent7Output;
 }
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 const RANK_COLORS = [
   "bg-[#C9A227] text-white",
@@ -15,6 +18,27 @@ const RANK_COLORS = [
 ];
 
 export const Agent7Investors: React.FC<Props> = ({ data }) => {
+  const { state } = usePipeline();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadReport = async () => {
+    if (!state.idea_id) return;
+    setDownloading(true);
+    try {
+      const reportUrl = `${API_BASE_URL}/ideas/${state.idea_id}/report`;
+      const link = document.createElement("a");
+      link.href = reportUrl;
+      link.download = `LaunchPad_Report_${state.idea_id.slice(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error("Error downloading report:", e);
+    } finally {
+      setTimeout(() => setDownloading(false), 1000);
+    }
+  };
+
   return (
     <div className="bg-white border border-[#E2E8F0]">
       {/* Stage header */}
@@ -85,11 +109,16 @@ export const Agent7Investors: React.FC<Props> = ({ data }) => {
           </div>
         </div>
         <button
-          onClick={() => window.print()}
-          className="flex items-center space-x-2 bg-[#C9A227] hover:bg-[#b8921f] text-[#0B1220] font-mono text-xs font-bold uppercase px-5 py-3 transition-all shrink-0"
+          onClick={handleDownloadReport}
+          disabled={downloading || !state.idea_id}
+          className="flex items-center space-x-2 bg-[#C9A227] hover:bg-[#b8921f] text-[#0B1220] font-mono text-xs font-bold uppercase px-5 py-3 transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Download className="h-4 w-4" />
-          <span>Export Full Report</span>
+          {downloading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          <span>{downloading ? "Generating PDF..." : "Export Full PDF Report"}</span>
         </button>
       </div>
     </div>
