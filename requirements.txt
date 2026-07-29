@@ -4,3 +4,4 @@
 google-generativeai   # for LLM_PROVIDER=gemini
 anthropic             # for LLM_PROVIDER=anthropic
 openai                # for LLM_PROVIDER=openai
+reportlab             # for PDF report generation

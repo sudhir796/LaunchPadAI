@@ -8,7 +8,23 @@ interface Props {
   data: Agent5Output;
 }
 
+const safeRender = (val: any): string => {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (typeof val === "object") {
+    if (Array.isArray(val)) return val.map(safeRender).join(", ");
+    return val.description || val.text || val.title || val.name || val.value || val.content || JSON.stringify(val);
+  }
+  return String(val);
+};
+
 export const Agent5BusinessModel: React.FC<Props> = ({ data }) => {
+  const customerSegments = Array.isArray(data?.customer_segments) ? data.customer_segments : [];
+  const channels = Array.isArray(data?.channels) ? data.channels : [];
+  const revenueStreams = Array.isArray(data?.revenue_streams) ? data.revenue_streams : [];
+  const costStructure = Array.isArray(data?.cost_structure) ? data.cost_structure : [];
+
   return (
     <div className="bg-white border border-[#E2E8F0] p-6 md:p-8">
       {/* Header */}
@@ -30,7 +46,7 @@ export const Agent5BusinessModel: React.FC<Props> = ({ data }) => {
           </span>
         </div>
         <p className="font-serif text-lg leading-relaxed text-[#F7F8FA]">
-          {data.value_proposition}
+          {safeRender(data?.value_proposition)}
         </p>
       </div>
 
@@ -45,9 +61,9 @@ export const Agent5BusinessModel: React.FC<Props> = ({ data }) => {
             </span>
           </div>
           <ul className="space-y-2 text-xs text-[#4A5568] leading-relaxed">
-            {data.customer_segments.map((seg, idx) => (
+            {customerSegments.map((seg, idx) => (
               <li key={idx} className="pl-3 border-l border-[#C9A227]">
-                {seg}
+                {safeRender(seg)}
               </li>
             ))}
           </ul>
@@ -62,9 +78,9 @@ export const Agent5BusinessModel: React.FC<Props> = ({ data }) => {
             </span>
           </div>
           <ul className="space-y-2 text-xs text-[#4A5568] leading-relaxed">
-            {data.channels.map((chan, idx) => (
+            {channels.map((chan, idx) => (
               <li key={idx} className="pl-3 border-l border-slate-300">
-                {chan}
+                {safeRender(chan)}
               </li>
             ))}
           </ul>
@@ -94,9 +110,9 @@ export const Agent5BusinessModel: React.FC<Props> = ({ data }) => {
             <span>Monetization & Revenue Streams</span>
           </h4>
           <ul className="space-y-2.5 text-xs text-[#4A5568] leading-relaxed font-mono">
-            {data.revenue_streams.map((rev, idx) => (
+            {revenueStreams.map((rev, idx) => (
               <li key={idx} className="p-3 bg-[#F7F8FA] border border-[#E2E8F0]">
-                {rev}
+                {safeRender(rev)}
               </li>
             ))}
           </ul>
@@ -109,9 +125,9 @@ export const Agent5BusinessModel: React.FC<Props> = ({ data }) => {
             <span>Operational Cost Structure</span>
           </h4>
           <ul className="space-y-2.5 text-xs text-[#4A5568] leading-relaxed font-mono">
-            {data.cost_structure.map((cost, idx) => (
+            {costStructure.map((cost, idx) => (
               <li key={idx} className="p-3 bg-white border border-[#E2E8F0]">
-                {cost}
+                {safeRender(cost)}
               </li>
             ))}
           </ul>

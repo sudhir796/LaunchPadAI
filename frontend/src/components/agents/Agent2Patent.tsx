@@ -9,6 +9,8 @@ interface Props {
 }
 
 export const Agent2Patent: React.FC<Props> = ({ data }) => {
+  const riskLevel = (data?.risk_level || "MEDIUM").toString();
+
   const getRiskColors = (risk: string) => {
     switch (risk.toLowerCase()) {
       case "low":
@@ -30,7 +32,9 @@ export const Agent2Patent: React.FC<Props> = ({ data }) => {
     }
   };
 
-  const riskStyle = getRiskColors(data.risk_level);
+  const riskStyle = getRiskColors(riskLevel);
+  const similarPatents = Array.isArray(data?.similar_patents) ? data.similar_patents : [];
+  const notes = data?.notes || "Freedom to operate analysis unavailable.";
 
   return (
     <div className="bg-white border border-[#E2E8F0] p-6 md:p-8">
@@ -46,7 +50,7 @@ export const Agent2Patent: React.FC<Props> = ({ data }) => {
         </div>
         <div className={`mt-4 md:mt-0 flex items-center space-x-2 border px-3.5 py-1.5 font-mono text-xs uppercase tracking-wider ${riskStyle.bg}`}>
           <span className={`h-2.5 w-2.5 rounded-full ${riskStyle.dot}`}></span>
-          <span>{data.risk_level} IP Conflict Risk</span>
+          <span>{riskLevel} IP Conflict Risk</span>
         </div>
       </div>
 
@@ -67,27 +71,39 @@ export const Agent2Patent: React.FC<Props> = ({ data }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2E8F0] text-sm text-[#4A5568]">
-              {data.similar_patents.map((pat, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 font-serif font-semibold text-[#1A202C] leading-snug">
-                    {pat.title}
-                  </td>
-                  <td className="p-4 leading-relaxed font-sans">
-                    {pat.summary}
-                  </td>
-                  <td className="p-4 text-right">
-                    <a
-                      href={pat.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-1.5 text-xs font-mono text-[#C9A227] hover:text-[#0B1220] transition-colors"
-                    >
-                      <span>PATENT ID</span>
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
+              {similarPatents.length > 0 ? (
+                similarPatents.map((pat, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-4 font-serif font-semibold text-[#1A202C] leading-snug">
+                      {pat?.title || "Untitled Patent"}
+                    </td>
+                    <td className="p-4 leading-relaxed font-sans">
+                      {pat?.summary || "No technical summary provided."}
+                    </td>
+                    <td className="p-4 text-right">
+                      {pat?.source_url ? (
+                        <a
+                          href={pat.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center space-x-1.5 text-xs font-mono text-[#C9A227] hover:text-[#0B1220] transition-colors font-bold"
+                        >
+                          <span>PATENT LINK</span>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      ) : (
+                        <span className="text-xs font-mono text-slate-400">N/A</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3} className="p-6 text-center text-xs font-mono text-slate-400">
+                    No direct prior art patent conflicts detected for this query.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -100,7 +116,7 @@ export const Agent2Patent: React.FC<Props> = ({ data }) => {
           <span>Freedom to Operate Analysis</span>
         </h4>
         <p className="text-sm text-[#4A5568] leading-relaxed font-sans">
-          {data.notes}
+          {notes}
         </p>
       </div>
     </div>

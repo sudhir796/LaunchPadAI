@@ -2,13 +2,25 @@
 
 import React from "react";
 import { Agent3Output } from "@/types/agentContracts";
-import { TrendingUp, Users, FileText, Link2 } from "lucide-react";
+import { TrendingUp, Users, Link2 } from "lucide-react";
 
 interface Props {
   data: Agent3Output;
 }
 
 export const Agent3Market: React.FC<Props> = ({ data }) => {
+  const marketEstimateStr = data?.market_size_estimate ? String(data.market_size_estimate).trim() : "";
+  const hasMarketEstimate = Boolean(marketEstimateStr);
+
+  const firstWord = hasMarketEstimate ? marketEstimateStr.split(" ")[0] : "N/A";
+  const restOfEstimate = hasMarketEstimate && marketEstimateStr.includes(" ")
+    ? marketEstimateStr.split(" ").slice(1).join(" ")
+    : "";
+
+  const targetDemographics = data?.target_demographics || "Target customer demographics information unavailable.";
+  const growthTrends = data?.growth_trends || "Growth trends and industry drivers information unavailable.";
+  const sources = Array.isArray(data?.sources) ? data.sources : [];
+
   return (
     <div className="bg-white border border-[#E2E8F0] p-6 md:p-8">
       {/* Header */}
@@ -29,12 +41,22 @@ export const Agent3Market: React.FC<Props> = ({ data }) => {
             Total Addressable Market (TAM)
           </span>
           <div className="mt-4">
-            <span className="font-mono text-2xl md:text-3xl font-bold tracking-tight text-[#0B1220]">
-              {data.market_size_estimate.split(" ")[0]}
-            </span>
-            <span className="font-serif text-base text-[#4A5568] ml-2">
-              {data.market_size_estimate.split(" ").slice(1).join(" ")}
-            </span>
+            {hasMarketEstimate ? (
+              <>
+                <span className="font-mono text-2xl md:text-3xl font-bold tracking-tight text-[#0B1220]">
+                  {firstWord}
+                </span>
+                {restOfEstimate && (
+                  <span className="font-serif text-base text-[#4A5568] ml-2">
+                    {restOfEstimate}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="font-sans text-sm text-slate-400 italic">
+                Market size estimate unavailable
+              </span>
+            )}
           </div>
           <span className="font-mono text-[9px] text-[#C9A227] uppercase tracking-widest mt-2">
             Projected Estimate
@@ -50,7 +72,7 @@ export const Agent3Market: React.FC<Props> = ({ data }) => {
             </span>
           </div>
           <p className="text-sm text-[#4A5568] leading-relaxed font-sans">
-            {data.target_demographics}
+            {targetDemographics}
           </p>
         </div>
       </div>
@@ -62,38 +84,40 @@ export const Agent3Market: React.FC<Props> = ({ data }) => {
           <span>Growth Trends & Macro Factors</span>
         </h4>
         <p className="text-sm text-[#4A5568] leading-relaxed font-sans">
-          {data.growth_trends}
+          {growthTrends}
         </p>
       </div>
 
       {/* Verified Sources */}
-      <div className="border-t border-[#E2E8F0] pt-6 space-y-3">
-        <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest block">
-          Verified Secondary Sources
-        </span>
-        <div className="flex flex-wrap gap-3">
-          {data.sources.map((url, idx) => {
-            let domain = "";
-            try {
-              domain = new URL(url).hostname;
-            } catch {
-              domain = "Source Report";
-            }
-            return (
-              <a
-                key={idx}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 border border-[#E2E8F0] px-3 py-1.5 text-xs font-mono text-[#4A5568] hover:text-[#C9A227] hover:border-[#C9A227] transition-all bg-white"
-              >
-                <Link2 className="h-3.5 w-3.5" />
-                <span>{domain}</span>
-              </a>
-            );
-          })}
+      {sources.length > 0 && (
+        <div className="border-t border-[#E2E8F0] pt-6 space-y-3">
+          <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest block">
+            Verified Secondary Sources
+          </span>
+          <div className="flex flex-wrap gap-3">
+            {sources.map((url, idx) => {
+              let domain = "";
+              try {
+                domain = new URL(url).hostname;
+              } catch {
+                domain = url || "Source Report";
+              }
+              return (
+                <a
+                  key={idx}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center space-x-2 border border-[#E2E8F0] px-3 py-1.5 text-xs font-mono text-[#4A5568] hover:text-[#C9A227] hover:border-[#C9A227] transition-all bg-white"
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  <span>{domain}</span>
+                </a>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

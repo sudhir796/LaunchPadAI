@@ -20,6 +20,8 @@ class IdeaResponse(IdeaBase):
     id: str
     status: str
     created_at: datetime
+    investor_readiness_score: Optional[float] = None
+    star_rating: Optional[int] = None
     
     class Config:
         from_attributes = True
@@ -153,3 +155,5 @@ class InvestorMatchingInput(BaseModel):
 class InvestorMatchingOutput(BaseModel):
     idea_id: str
     matched_investors: List[InvestorInfo]
+    investor_readiness_score: Optional[float] = None
+    star_rating: Optional[int] = None

@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePipeline } from "@/context/PipelineContext";
-import { Sparkles, PlusCircle } from "lucide-react";
+import { Sparkles, PlusCircle, History } from "lucide-react";
 
 export const Header: React.FC = () => {
   const { state, resetPipeline } = usePipeline();
@@ -84,6 +84,20 @@ export const Header: React.FC = () => {
             <span>Investor Ready</span>
           </button>
         )}
+
+        {/* History button */}
+        <Link
+          href="/history"
+          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-[11px] font-mono font-semibold uppercase tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          style={{
+            background: "var(--primary-navy-light)",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          <History className="h-3.5 w-3.5" style={{ color: "var(--accent-gold)" }} />
+          <span>History</span>
+        </Link>
 
         {/* New Submission */}
         <Link

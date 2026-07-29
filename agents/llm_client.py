@@ -51,9 +51,9 @@ ALL_PROVIDERS = ["groq", "cerebras", "gemini", "openai", "anthropic"]
 # Agent-specific provider fallback priority map:
 # Reasoning agents default to Gemini primary; Search-grounded agents default to Groq primary.
 AGENT_PROVIDER_MAP = {
-    "idea_validator": ["gemini", "groq", "cerebras"],
-    "business_model": ["gemini", "groq", "cerebras"],
-    "pitch_deck": ["gemini", "groq", "cerebras"],
+    "idea_validator": ["groq", "gemini", "cerebras"],
+    "business_model": ["groq", "gemini", "cerebras"],
+    "pitch_deck": ["groq", "gemini", "cerebras"],
     "patent_search": ["groq", "cerebras", "gemini"],
     "market_research": ["groq", "cerebras", "gemini"],
     "competitor_analysis": ["groq", "cerebras", "gemini"],
@@ -212,20 +212,36 @@ def _call_cerebras_single_key(api_key: str, system_prompt: str, user_prompt: str
 
 def _call_groq_single_key(api_key: str, system_prompt: str, user_prompt: str, max_tokens: int) -> str:
     from openai import OpenAI
+    import time
     client = OpenAI(
         api_key=api_key,
         base_url="https://api.groq.com/openai/v1",
     )
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        max_tokens=max_tokens,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-    return response.choices[0].message.content
+    models_to_try = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+    last_error = None
+
+    for model_name in models_to_try:
+        try:
+            response = client.chat.completions.create(
+                model=model_name,
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            last_error = e
+            if _is_rate_limit_or_transient_error(e):
+                time.sleep(0.5)
+                continue
+            else:
+                raise e
+
+    if last_error:
+        raise last_error
 
 
 def _call_gemini_single_key(api_key: str, system_prompt: str, user_prompt: str, max_tokens: int) -> str:
@@ -271,158 +287,170 @@ def _call_openai_single_key(api_key: str, system_prompt: str, user_prompt: str, 
     return response.choices[0].message.content
 
 
+def _extract_prompt_meta(user_prompt: str) -> tuple[str, str, str]:
+    idea_id = "unknown"
+    id_match = re.search(r'idea_id:\s*([^\n\r]+)', user_prompt, re.IGNORECASE)
+    if id_match:
+        idea_id = id_match.group(1).strip()
+
+    title_match = re.search(r'Idea Title:\s*([^\n\r]+)', user_prompt, re.IGNORECASE)
+    desc_match = re.search(r'Idea Description:\s*([^\n\r]+)', user_prompt, re.IGNORECASE)
+    
+    desc = desc_match.group(1).strip() if desc_match else "technology innovation venture"
+    title = title_match.group(1).strip() if title_match else desc[:50]
+
+    return idea_id, title, desc
+
+
 def _call_mock(system_prompt: str, user_prompt: str) -> str:
     """
-    Intelligent mock response generator for offline testing or when API keys are not set/exhausted.
+    Dynamic mock response generator for offline testing or when API keys are not set/exhausted.
+    Extracts idea title and description from user_prompt to tailor responses to the actual user idea.
     """
+    idea_id, title, desc = _extract_prompt_meta(user_prompt)
+
     if "similar_patents" in system_prompt:
         return json.dumps({
-            "idea_id": "test-001",
+            "idea_id": idea_id,
             "similar_patents": [
                 {
-                    "title": "Surplus Food Redistribution System and Method (US Patent 10,984,392)",
-                    "summary": "Automated matching and dispatch system for connecting commercial kitchens with surplus food to local receivers.",
-                    "source_url": "https://patents.google.com/patent/US10984392B2/en"
-                },
-                {
-                    "title": "Dynamic Mobile Notification for Perishable Goods Distribution",
-                    "summary": "Real-time geolocation-based push alert system for time-sensitive inventory dispatch.",
-                    "source_url": "https://patents.google.com/patent/US20210042812A1/en"
+                    "title": f"System and Method for {title} (US Patent 10,842,109)",
+                    "summary": f"Prior art system for automated processing related to {desc[:80]}.",
+                    "source_url": "https://patents.google.com"
                 }
             ],
             "risk_level": "medium",
-            "notes": "Prior art exists around real-time food dispatch algorithms. However, focusing on campus-specific micro-logistics and student authentication provides clear patentability and differentiation space."
+            "notes": f"Initial prior art exists around automated systems for {title[:40]}. Patentability focus should highlight unique algorithm/hardware integrations."
         })
     elif "validation_score" in system_prompt:
         return json.dumps({
-            "idea_id": "test-001",
-            "validation_score": 85,
+            "idea_id": idea_id,
+            "validation_score": 82,
             "strengths": [
-                "Strong social impact and sustainability focus",
-                "Clear high-density target market in university campuses",
-                "High availability of surplus food"
+                f"Addresses a clear market demand for {title[:40]}",
+                "High scalability potential across targeted customer segments",
+                "Strong technological value proposition"
             ],
             "weaknesses": [
-                "Logistical challenges with short food expiry windows",
-                "Food safety liability concerns"
+                "Initial customer acquisition friction",
+                "Requires robust early operational execution"
             ],
-            "feasibility_notes": "Technically straightforward mobile app with geolocation and push notifications. Main barrier is operational partner onboarding.",
-            "recommendation": "Proceed with pilot test at a single campus location with signed food safety liability waivers."
+            "feasibility_notes": f"Feasible technology stack for {title[:50]}. Key focus should be on MVP iteration and user feedback.",
+            "recommendation": "Proceed with pilot launch and targeted customer onboarding."
         })
     elif "market_size_estimate" in system_prompt:
         return json.dumps({
-            "idea_id": "test-001",
-            "market_size_estimate": "The global surplus food management and food waste reduction market was valued at $55.3 billion in 2023 and is projected to reach $92.6 billion by 2030, representing a TAM of over $90B globally.",
-            "growth_trends": "Growing at a CAGR of 7.6% driven by ESG compliance mandates, rising food prices, and institutional sustainability initiatives across university campuses.",
-            "target_demographics": "College students aged 18-25 seeking affordable meal options, university dining hall managers, and local community food redistribution shelters.",
+            "idea_id": idea_id,
+            "market_size_estimate": f"The global market for {title[:40]} was valued at $12.5B in 2023 and is projected to grow to $28.4B by 2030.",
+            "growth_trends": "Growing rapidly driven by digital transformation, automation adoption, and efficiency demands.",
+            "target_demographics": f"Primary target audience includes early adopters, enterprise users, and specialized operators needing {desc[:60]}.",
             "sources": [
-                "https://www.sciencedirect.com/science/article/pii/S1877050925026791",
-                "https://www.toogoodtogo.com/en-us"
+                "https://www.statista.com",
+                "https://www.bloomberg.com"
             ]
         })
     elif "differentiation_opportunities" in system_prompt:
         return json.dumps({
-            "idea_id": "test-001",
+            "idea_id": idea_id,
             "competitors": [
                 {
-                    "name": "Too Good To Go",
-                    "description": "Global marketplace connecting consumers with restaurants and bakeries for surplus surprise bags.",
-                    "strengths": "Massive brand recognition, large user base, established vendor partnerships.",
-                    "weaknesses": "Generic retail focus, lack of real-time university dining integration, no student financial aid meal plans.",
-                    "source_url": "https://www.toogoodtogo.com/en-us"
+                    "name": "Legacy Industry Leader",
+                    "description": f"Established player offering traditional solutions in {title[:40]}.",
+                    "strengths": "Large existing customer base and brand awareness.",
+                    "weaknesses": "Slow innovation cycle and higher cost structure.",
+                    "source_url": "https://example.com/competitor1"
                 },
                 {
-                    "name": "Olio",
-                    "description": "Peer-to-peer neighborhood sharing app for surplus food and household items.",
-                    "strengths": "Community-driven hyper-local sharing model with zero cost options.",
-                    "weaknesses": "Inconsistent availability, dependent on volunteer pickups, lacks institutional campus integration.",
-                    "source_url": "https://olioapp.com/"
+                    "name": "NextGen Solution Provider",
+                    "description": "Niche startup focused on basic automated workflows.",
+                    "strengths": "Modern tech stack.",
+                    "weaknesses": "Limited features and lack of deep customization.",
+                    "source_url": "https://example.com/competitor2"
                 }
             ],
-            "differentiation_opportunities": "Focusing specifically on university dining halls and campus micro-logistics allows direct API integration with student ID card balances and automated end-of-day kitchen surplus dispatch, which generic commercial apps do not support."
+            "differentiation_opportunities": f"Unique opportunity to differentiate {title[:40]} through proprietary real-time automation and seamless workflow integration."
         })
     elif "revenue_streams" in system_prompt:
         return json.dumps({
-            "idea_id": "test-001",
+            "idea_id": idea_id,
             "revenue_streams": [
-                "Micro-transaction commissions (10-15%) per discounted surplus meal sold to students",
-                "SaaS subscription fee for university dining services providing analytics & ESG compliance reporting",
-                "Sponsored sustainability partnerships with campus eco-organizations and brands"
+                "Subscription SaaS pricing tier (Monthly/Annual)",
+                "Usage-based transaction or commission fees",
+                "Enterprise integration and premium support plans"
             ],
             "cost_structure": [
-                "Cloud infrastructure, API hosting, and real-time notification push services",
-                "Mobile app maintenance, UI updates, and technical support",
-                "Campus ambassador marketing, onboarding kits, and operational coordination"
+                "Cloud infrastructure, API hosting, and security compliance",
+                "Product R&D and continuous software maintenance",
+                "Sales, marketing, and customer success operations"
             ],
-            "value_proposition": "Empowers university canteens to monetize surplus meals while cutting campus food waste by up to 40% and offering students high-quality, ultra-affordable food options.",
+            "value_proposition": f"Delivers automated, cost-effective, and high-efficiency performance for {desc[:90]}.",
             "customer_segments": [
-                "University & College Dining Service Managers seeking waste reduction and ESG reporting",
-                "Budget-conscious college students and university staff looking for discounted fresh meals",
-                "Local community food pantries receiving subsidized surplus food donations"
+                f"Primary end-users seeking efficient {title[:40]} solutions",
+                "SMBs and growth-stage enterprises needing automated workflows"
             ],
             "channels": [
-                "Direct B2B university dining administration sales & campus partnerships",
-                "Student campus ambassador network & orientation week promotional events",
-                "Push notifications, university student portal integrations, and social media campaigns"
+                "Direct B2B digital marketing and product-led growth",
+                "Strategic channel partnerships and industry events"
             ]
         })
     elif "matched_investors" in system_prompt:
         return json.dumps({
-            "idea_id": "test-001",
+            "idea_id": idea_id,
             "matched_investors": [
                 {
-                    "name": "S2G Ventures",
-                    "focus_area": "FoodTech, AgriTech & Sustainable Supply Chain",
-                    "reason": "Active seed/series A investor specializing in food waste reduction platforms, sustainable agriculture, and circular economy startups."
+                    "name": "Peak XV Partners",
+                    "focus_area": "Early-mid stage, broad technology sectors",
+                    "reason": f"Active investor matching the growth thesis for {title[:40]}."
                 },
                 {
-                    "name": "Closed Loop Partners",
-                    "focus_area": "Circular Economy & Resource Efficiency",
-                    "reason": "Impact venture firm funding solutions that reduce municipal and institutional food waste with strong ESG returns."
+                    "name": "Blume Ventures",
+                    "focus_area": "Early stage, consumer tech & SaaS",
+                    "reason": f"Strong thesis alignment for scalable software and tech-enabled business models like {title[:30]}."
                 },
                 {
-                    "name": "Better Food Ventures",
-                    "focus_area": "Food Tech & Food Service Innovation",
-                    "reason": "Focuses specifically on technology platforms transforming food service operations, institutional catering, and surplus management."
+                    "name": "100X.VC",
+                    "focus_area": "Pre-seed, India-focused technology startups",
+                    "reason": "Pre-seed seed capital partner for early stage innovation."
                 }
             ]
         })
     elif "slides" in system_prompt:
         return json.dumps({
-            "idea_id": "test-001",
+            "idea_id": idea_id,
             "slides": [
                 {
                     "title": "Title & Executive Summary",
-                    "content": "Campus Food Waste Redistribution App — Transforming university food surplus into affordable student meals and zero campus waste."
+                    "content": f"{title} — {desc[:100]}"
                 },
                 {
                     "title": "The Problem",
-                    "content": "Over 35% of cooked food in university canteens is discarded daily due to inefficient demand forecasting, while 30%+ of college students experience food insecurity."
+                    "content": f"Existing manual processes for {title[:40]} are inefficient, costly, and prone to delays."
                 },
                 {
                     "title": "The Solution",
-                    "content": "A real-time hyper-local marketplace app connecting university dining halls with surplus meals directly to students at 50-70% discount during end-of-day flash sales."
+                    "content": f"A specialized automated platform delivering {desc[:100]}."
                 },
                 {
                     "title": "Market Opportunity",
-                    "content": "Global food surplus management TAM is $55.3B growing at 7.6% CAGR. Target SAM: 4,000+ higher education institutions in North America."
+                    "content": f"Global market TAM estimated at $12.5B+ with strong CAGR growth across key demographics."
                 },
                 {
                     "title": "Competitive Advantage",
-                    "content": "Direct API integration with campus student ID card systems and university dining services, enabling automated operational dispatch impossible for generic commercial apps."
+                    "content": f"Proprietary features and seamless user experience tailored for {title[:40]}."
                 },
                 {
-                    "title": "Business Model & Monetization",
-                    "content": "10-15% micro-commission per meal order plus SaaS subscription tier for university dining services providing ESG compliance & sustainability reporting."
+                    "title": "Business Model",
+                    "content": "SaaS subscriptions, transaction fees, and enterprise integration support."
                 },
                 {
-                    "title": "Go-to-Market & Execution",
-                    "content": "Launch pilot with 3 major university campuses via student ambassador networks and orientation week campaigns, scaling to 50 campuses in Year 1."
+                    "title": "Go-to-Market Strategy",
+                    "content": "Targeted digital acquisition, strategic partnerships, and community-driven expansion."
                 }
             ]
         })
     else:
         return json.dumps({
+            "idea_id": idea_id,
             "status": "success",
             "message": "Mock response generated for offline testing."
         })

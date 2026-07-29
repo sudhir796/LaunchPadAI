@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Agent6Output } from "@/types/agentContracts";
-import { ChevronLeft, ChevronRight, Presentation, Maximize2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Presentation } from "lucide-react";
 
 interface Props {
   data: Agent6Output;
@@ -11,7 +11,7 @@ interface Props {
 export const Agent6PitchDeck: React.FC<Props> = ({ data }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
-  const slides = data.slides || [];
+  const slides = Array.isArray(data?.slides) ? data.slides : [];
   const currentSlide = slides[currentSlideIndex];
 
   const handlePrev = () => {
@@ -29,13 +29,18 @@ export const Agent6PitchDeck: React.FC<Props> = ({ data }) => {
   if (slides.length === 0) {
     return (
       <div className="bg-white border border-[#E2E8F0] p-6 text-center text-slate-500 font-mono text-sm">
-        No slides generated.
+        No slides generated for this pitch deck.
       </div>
     );
   }
 
   // Parse slide content: lines starting with bullet points or standard paragraphs
-  const parsedContent = currentSlide.content.split("\n").filter((line) => line.trim() !== "");
+  const slideContent: any = currentSlide?.content;
+  const rawContent: string = typeof slideContent === "string"
+    ? slideContent
+    : (slideContent && typeof slideContent === "object" ? (slideContent.description || slideContent.text || JSON.stringify(slideContent)) : String(slideContent || ""));
+
+  const parsedContent: string[] = rawContent ? rawContent.split("\n").filter((line: string) => line && line.trim() !== "") : ["Content unavailable for this slide."];
 
   return (
     <div className="bg-white border border-[#E2E8F0]">
@@ -72,7 +77,7 @@ export const Agent6PitchDeck: React.FC<Props> = ({ data }) => {
             {/* Slide body */}
             <div className="my-auto py-4">
               <h4 className="font-serif text-2xl md:text-3xl lg:text-4xl font-semibold text-white tracking-tight leading-tight mb-4 md:mb-6">
-                {currentSlide.title}
+                {currentSlide?.title || "Untitled Slide"}
               </h4>
               <div className="space-y-2 md:space-y-3">
                 {parsedContent.map((paragraph, index) => {
@@ -105,7 +110,7 @@ export const Agent6PitchDeck: React.FC<Props> = ({ data }) => {
               className={`flex items-center space-x-1.5 px-3 py-1.5 border transition-all font-semibold ${
                 currentSlideIndex === 0
                   ? "text-slate-300 border-[#E2E8F0] cursor-not-allowed bg-[#F7F8FA]"
-                  : "text-[#0B1220] border-[#E2E8F0] hover:border-[#C9A227] hover:text-[#C9A227] bg-white"
+                  : "text-[#0B1220] border-[#E2E8F0] hover:border-[#C9A227] hover:text-[#C9A227] bg-white cursor-pointer"
               }`}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -122,7 +127,7 @@ export const Agent6PitchDeck: React.FC<Props> = ({ data }) => {
               className={`flex items-center space-x-1.5 px-3 py-1.5 border transition-all font-semibold ${
                 currentSlideIndex === slides.length - 1
                   ? "text-slate-300 border-[#E2E8F0] cursor-not-allowed bg-[#F7F8FA]"
-                  : "text-[#0B1220] border-[#E2E8F0] hover:border-[#C9A227] hover:text-[#C9A227] bg-white"
+                  : "text-[#0B1220] border-[#E2E8F0] hover:border-[#C9A227] hover:text-[#C9A227] bg-white cursor-pointer"
               }`}
             >
               <span>NEXT</span>

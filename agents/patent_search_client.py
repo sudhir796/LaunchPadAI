@@ -74,10 +74,16 @@ def trim_abstract(abstract: str, max_sentences: int = 2) -> str:
     return trimmed
 
 
+try:
+    from .search_utils import perform_web_search
+except ImportError:
+    from search_utils import perform_web_search
+
+
 def query_patentsview(idea_description: str, keywords: list = None, per_page: int = 5) -> list:
     """
     Queries the USPTO PatentsView API (POST https://api.patentsview.org/patents/query)
-    for granted US patents matching the idea keywords.
+    or fails over to Google Patents Search for real granted US/international patents.
 
     Returns a list of mapped patent dictionaries:
     [
@@ -87,10 +93,9 @@ def query_patentsview(idea_description: str, keywords: list = None, per_page: in
         "source_url": "https://patents.google.com/patent/<patent_number>"
       }
     ]
-    Returns [] on zero results, network errors, timeouts, or API unavailability.
     """
     search_terms = extract_search_keywords(idea_description, keywords)
-    print(f"[Patent Search] Querying PatentsView API with search terms: '{search_terms}'")
+    print(f"[Patent Search] Querying USPTO / PatentsView API with terms: '{search_terms}'")
 
     payload = {
         "q": {
@@ -118,63 +123,71 @@ def query_patentsview(idea_description: str, keywords: list = None, per_page: in
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) LaunchPadAI/1.0"
     }
 
-    data_bytes = json.dumps(payload).encode("utf-8")
-    ctx = ssl._create_unverified_context()
-
-    req = urllib.request.Request(
-        PATENTSVIEW_API_URL,
-        data=data_bytes,
-        headers=headers,
-        method="POST"
-    )
+    mapped_patents = []
 
     try:
-        with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
-            if response.status != 200:
-                print(f"[Patent Search] PatentsView API returned HTTP status {response.status}")
-                return []
-            
+        data_bytes = json.dumps(payload).encode("utf-8")
+        ctx = ssl._create_unverified_context()
+
+        req = urllib.request.Request(
+            PATENTSVIEW_API_URL,
+            data=data_bytes,
+            headers=headers,
+            method="POST"
+        )
+
+        with urllib.request.urlopen(req, context=ctx, timeout=8) as response:
             raw_body = response.read().decode("utf-8", errors="ignore")
             
-            # Check if response is HTML (e.g. redirect page or portal migration landing)
-            if raw_body.strip().startswith("<"):
-                print("[Patent Search] PatentsView API returned HTML instead of JSON (endpoint unavailable or redirected).")
-                return []
-
-            resp_json = json.loads(raw_body)
-            raw_patents = resp_json.get("patents")
-            
-            if not isinstance(raw_patents, list) or len(raw_patents) == 0:
-                print("[Patent Search] PatentsView API returned 0 patent results for query.")
-                return []
-
-            mapped_patents = []
-            for item in raw_patents:
-                p_num = str(item.get("patent_number") or item.get("patent_id") or "").strip()
-                p_title = item.get("patent_title") or "Untitled Patent"
-                p_abstract = item.get("patent_abstract") or ""
+            # If PatentsView returns valid JSON
+            if response.status == 200 and not raw_body.strip().startswith("<"):
+                resp_json = json.loads(raw_body)
+                raw_patents = resp_json.get("patents")
                 
-                summary = trim_abstract(p_abstract, max_sentences=2)
-                source_url = f"https://patents.google.com/patent/{p_num}" if p_num else "https://patents.google.com"
+                if isinstance(raw_patents, list) and len(raw_patents) > 0:
+                    for item in raw_patents:
+                        p_num = str(item.get("patent_number") or item.get("patent_id") or "").strip()
+                        p_title = item.get("patent_title") or "Untitled Patent"
+                        p_abstract = item.get("patent_abstract") or ""
+                        
+                        summary = trim_abstract(p_abstract, max_sentences=2)
+                        source_url = f"https://patents.google.com/patent/{p_num}" if p_num else "https://patents.google.com"
+
+                        mapped_patents.append({
+                            "title": p_title,
+                            "summary": summary,
+                            "source_url": source_url
+                        })
+                    print(f"[Patent Search] Retrieved {len(mapped_patents)} patents from PatentsView API.")
+                    return mapped_patents
+            else:
+                print("[Patent Search] PatentsView API returned HTML redirect / transition page. Falling back to Google Patents Search...")
+    except Exception as e:
+        print(f"[Patent Search] PatentsView API request error ({e}). Falling back to Google Patents Search...")
+
+    # Fallback: Perform targeted Google Patents web search
+    try:
+        gpatent_query = f"site:patents.google.com {search_terms}"
+        print(f"[Patent Search] Executing Google Patents Search: '{gpatent_query}'")
+        web_results = perform_web_search(gpatent_query, max_results=per_page)
+        
+        if web_results:
+            for item in web_results:
+                raw_title = item.get("title", "Patent Document")
+                clean_title = re.sub(r'\s*-\s*Google Patents\s*$', '', raw_title, flags=re.IGNORECASE).strip()
+                snippet = item.get("snippet", "")
+                summary = trim_abstract(snippet, max_sentences=2)
+                url = item.get("url", "https://patents.google.com")
 
                 mapped_patents.append({
-                    "title": p_title,
-                    "summary": summary,
-                    "source_url": source_url
+                    "title": clean_title,
+                    "summary": summary if summary else "Prior art patent record indexed on Google Patents.",
+                    "source_url": url
                 })
-
-            print(f"[Patent Search] Successfully retrieved {len(mapped_patents)} patents from PatentsView.")
+            print(f"[Patent Search] Successfully retrieved {len(mapped_patents)} real prior art patents via Google Patents.")
             return mapped_patents
+    except Exception as fallback_err:
+        print(f"[Patent Search] Google Patents fallback search error: {fallback_err}")
 
-    except urllib.error.HTTPError as e:
-        print(f"[Patent Search] PatentsView API HTTP error: {e.code} {e.reason}")
-        return []
-    except urllib.error.URLError as e:
-        print(f"[Patent Search] PatentsView API URL connection error: {e.reason}")
-        return []
-    except json.JSONDecodeError as e:
-        print(f"[Patent Search] PatentsView API JSON parse error: {e}")
-        return []
-    except Exception as e:
-        print(f"[Patent Search] PatentsView API request unexpected error: {e}")
-        return []
+    return []
+

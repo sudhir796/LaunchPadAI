@@ -232,12 +232,17 @@ def build_pdf_report(idea_data: dict, agent_outputs_map: dict) -> bytes:
     target_market = clean_text(idea_data.get("target_market") or "Global Target Market")
     sector = clean_text(idea_data.get("sector") or "Technology & Innovation")
 
+    readiness_score = idea_data.get("investor_readiness_score", "N/A")
+    star_rating = idea_data.get("star_rating", 5)
+    stars_str = "★" * int(star_rating) if isinstance(star_rating, (int, float)) else ""
+
     meta_html = f"""
     <b>Document Type:</b> Investor Due Diligence Report<br/>
     <b>Idea Identifier:</b> {idea_id}<br/>
     <b>Date Generated:</b> {created_dt}<br/>
     <b>Sector Category:</b> {sector}<br/>
     <b>Target Market:</b> {target_market}<br/>
+    <b>Investor Readiness Score:</b> <font color='#4338CA'><b>{readiness_score}/100</b></font> {stars_str}<br/>
     <b>Pipeline Status:</b> Verified Autonomous Agent Execution
     """
     story.append(Paragraph(meta_html, meta_style))

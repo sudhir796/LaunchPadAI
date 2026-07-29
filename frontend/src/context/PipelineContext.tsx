@@ -7,6 +7,7 @@ import { PipelineState } from "../types/agentContracts";
 interface PipelineContextProps {
   state: PipelineState;
   submitIdea: (title: string, description: string, market: string) => Promise<void>;
+  loadIdea: (ideaId: string) => Promise<void>;
   resetPipeline: () => void;
 }
 
@@ -64,6 +65,86 @@ export const PipelineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const resetPipeline = () => {
     runRef.current = false;
     setState(defaultState);
+  };
+
+  const loadIdea = async (ideaId: string) => {
+    try {
+      const baseUrl = API_BASE_URL.replace(/\/$/, "");
+      const altBaseUrl = baseUrl.includes("127.0.0.1")
+        ? baseUrl.replace("127.0.0.1", "localhost")
+        : baseUrl.replace("localhost", "127.0.0.1");
+
+      let response: Response | null = null;
+      try {
+        response = await fetch(`${baseUrl}/ideas/${ideaId}`);
+      } catch (e) {
+        try {
+          response = await fetch(`${altBaseUrl}/ideas/${ideaId}`);
+        } catch (e2) {
+          response = null;
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw new Error(`API error ${response?.status || "unreachable"}`);
+      }
+
+      const data = await response.json();
+
+      const loadedOutputs = { ...defaultState.agentOutputs };
+      const loadedStates = { ...initialStates };
+
+      let highestActiveStage = 1;
+      let completedCount = 0;
+      let hasError = false;
+
+      if (data.agent_outputs && Array.isArray(data.agent_outputs)) {
+        for (const item of data.agent_outputs) {
+          const mapping = AGENT_NAME_TO_STAGE[item.agent_name];
+          if (!mapping) continue;
+
+          const { stageNum, key } = mapping;
+
+          if (item.status === "done" && item.output_json) {
+            loadedStates[stageNum] = "completed";
+            loadedOutputs[key] = item.output_json as any;
+            completedCount++;
+            if (stageNum > highestActiveStage) highestActiveStage = stageNum;
+          } else if (item.status === "running") {
+            loadedStates[stageNum] = "running";
+            if (stageNum > highestActiveStage) highestActiveStage = stageNum;
+          } else if (item.status === "error") {
+            loadedStates[stageNum] = "failed";
+            hasError = true;
+          }
+        }
+      }
+
+      let pipelineStatus: PipelineState["status"] = "running";
+      if (data.status === "done" || completedCount === 7) {
+        pipelineStatus = "completed";
+        highestActiveStage = 7;
+        runRef.current = false;
+      } else if (data.status === "error" || hasError) {
+        pipelineStatus = "failed";
+        runRef.current = false;
+      } else {
+        runRef.current = true;
+      }
+
+      setState({
+        idea_id: data.id,
+        idea_title: data.title || "Untitled Project",
+        idea_description: data.description || "",
+        target_market: data.target_market || "",
+        status: pipelineStatus,
+        currentStage: highestActiveStage,
+        agentStates: loadedStates,
+        agentOutputs: loadedOutputs,
+      });
+    } catch (error) {
+      console.error("[PipelineContext] Error loading idea by ID:", error);
+    }
   };
 
   const submitIdea = async (title: string, description: string, market: string) => {
@@ -256,7 +337,7 @@ export const PipelineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [state.idea_id, state.status]);
 
   return (
-    <PipelineContext.Provider value={{ state, submitIdea, resetPipeline }}>
+    <PipelineContext.Provider value={{ state, submitIdea, loadIdea, resetPipeline }}>
       {children}
     </PipelineContext.Provider>
   );

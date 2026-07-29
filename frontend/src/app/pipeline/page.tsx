@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePipeline } from "@/context/PipelineContext";
 import { Header } from "@/components/Header";
 import { PipelineRail } from "@/components/PipelineRail";
@@ -14,7 +14,7 @@ import { Agent5BusinessModel }from "@/components/agents/Agent5BusinessModel";
 import { Agent6PitchDeck }    from "@/components/agents/Agent6PitchDeck";
 import { Agent7Investors }    from "@/components/agents/Agent7Investors";
 
-import { Loader2, HelpCircle, ArrowLeft, Clock, CheckCircle2, Download } from "lucide-react";
+import { Loader2, HelpCircle, ArrowLeft, Clock, CheckCircle2, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 const STAGE_META: Record<number, { name: string; domain: string }> = {
@@ -27,13 +27,41 @@ const STAGE_META: Record<number, { name: string; domain: string }> = {
   7: { name: "Investor Matching",   domain: "Recommendation" },
 };
 
-export default function PipelinePage() {
-  const { state, resetPipeline } = usePipeline();
+function PipelinePageContent() {
+  const searchParams = useSearchParams();
+  const queryIdeaId = searchParams.get("idea_id");
+
+  const { state, loadIdea, resetPipeline } = usePipeline();
   const router = useRouter();
 
+  const [activeStage, setActiveStage] = useState<number>(1);
+  const userOverrodeStage = useRef<boolean>(false);
+  const prevHighestStage = useRef<number>(1);
+
   useEffect(() => {
-    if (!state.idea_title && state.status === "idle") router.push("/");
-  }, [state.idea_title, state.status, router]);
+    if (queryIdeaId && state.idea_id !== queryIdeaId) {
+      loadIdea(queryIdeaId);
+    } else if (!queryIdeaId && !state.idea_title && state.status === "idle") {
+      router.push("/");
+    }
+  }, [queryIdeaId, state.idea_id, state.idea_title, state.status, loadIdea, router]);
+
+  useEffect(() => {
+    const currentRunningOrLatest = state.currentStage || 1;
+
+    if (!userOverrodeStage.current) {
+      setActiveStage(currentRunningOrLatest);
+    } else if (activeStage === prevHighestStage.current && currentRunningOrLatest > prevHighestStage.current) {
+      setActiveStage(currentRunningOrLatest);
+    }
+
+    prevHighestStage.current = currentRunningOrLatest;
+  }, [state.currentStage, activeStage]);
+
+  const handleSelectStage = (stageNum: number) => {
+    userOverrodeStage.current = true;
+    setActiveStage(stageNum);
+  };
 
   if (!state.idea_title) {
     return (
@@ -51,6 +79,9 @@ export default function PipelinePage() {
   const completedCount = Object.values(state.agentStates).filter(s => s === "completed").length;
   const progress = Math.round((completedCount / 7) * 100);
 
+  const readinessScore = state.agentOutputs.agent7?.investor_readiness_score;
+  const starRating = state.agentOutputs.agent7?.star_rating ?? (typeof readinessScore === "number" ? (readinessScore >= 80 ? 5 : readinessScore >= 65 ? 4 : readinessScore >= 50 ? 3 : 2) : undefined);
+
   const renderAgentCard = (stageNum: number) => {
     const status = state.agentStates[stageNum];
     const meta   = STAGE_META[stageNum];
@@ -58,17 +89,21 @@ export default function PipelinePage() {
     if (status === "queued") {
       return (
         <div
-          id={`agent${stageNum}`}
-          className="rounded-xl p-5 flex items-center justify-between opacity-40"
-          style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)" }}
+          className="bg-white border border-[#E2E8F0] p-8 md:p-12 text-center rounded-xl animate-fade-in shadow-sm"
         >
-          <div>
-            <div className="stage-badge mb-0.5">0{stageNum}. Queued</div>
-            <h4 className="font-serif text-base font-semibold" style={{ color: "var(--text-secondary)" }}>
-              {meta.name}
-            </h4>
+          <div className="font-mono text-[10px] text-[#C9A227] uppercase tracking-widest mb-2 font-bold">
+            Stage 0{stageNum} — Queued
           </div>
-          <HelpCircle className="h-4 w-4 shrink-0" style={{ color: "var(--text-muted)" }} />
+          <h3 className="font-serif text-2xl font-bold text-[#0B1220] mb-2">
+            {meta.name}
+          </h3>
+          <p className="text-xs text-slate-500 font-sans max-w-md mx-auto mb-6">
+            This analysis stage is queued and waiting for prior agent outputs to finish processing...
+          </p>
+          <div className="inline-flex items-center space-x-2 font-mono text-xs text-slate-500 bg-[#F7F8FA] border border-[#E2E8F0] px-4 py-2 rounded-full">
+            <Clock className="h-4 w-4 text-slate-400" />
+            <span>Awaiting Stage 0{stageNum} Execution</span>
+          </div>
         </div>
       );
     }
@@ -77,33 +112,28 @@ export default function PipelinePage() {
       return (
         <div
           id={`agent${stageNum}`}
-          className="rounded-xl p-5 relative overflow-hidden"
-          style={{
-            background: "var(--surface-elevated)",
-            border: "1px solid rgba(212,168,67,0.35)",
-            boxShadow: "0 0 24px rgba(212,168,67,0.08)",
-          }}
+          className="rounded-xl p-8 relative overflow-hidden bg-white border border-[#E2E8F0] shadow-sm animate-fade-in"
         >
           {/* Animated top bar */}
-          <div className="absolute top-0 left-0 h-0.5 w-full">
+          <div className="absolute top-0 left-0 h-1 w-full">
             <div className="h-full animate-pulse" style={{ background: "linear-gradient(90deg, transparent, var(--accent-gold), transparent)" }} />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center space-x-2 mb-1">
-                <span className="h-1.5 w-1.5 rounded-full animate-ping" style={{ background: "var(--accent-gold)" }} />
-                <span className="stage-badge">0{stageNum}. Processing</span>
+              <div className="flex items-center space-x-2 mb-2">
+                <span className="h-2 w-2 rounded-full animate-ping" style={{ background: "var(--accent-gold)" }} />
+                <span className="stage-badge font-bold">Stage 0{stageNum} — Processing</span>
               </div>
-              <h4 className="font-serif text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+              <h4 className="font-serif text-2xl font-bold text-[#0B1220]">
                 {meta.name}
               </h4>
-              <p className="text-xs mt-1 font-mono" style={{ color: "var(--text-muted)" }}>
+              <p className="text-xs mt-1.5 font-mono text-slate-500">
                 {meta.domain} — compiling intelligence...
               </p>
             </div>
             <div className="flex flex-col items-center space-y-1">
-              <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--accent-gold)" }} />
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--accent-gold)" }} />
             </div>
           </div>
         </div>
@@ -140,7 +170,7 @@ export default function PipelinePage() {
 
       <div className="relative flex-grow flex max-w-screen-xl w-full mx-auto" style={{ zIndex: 1 }}>
         {/* Sidebar rail */}
-        <PipelineRail />
+        <PipelineRail activeStage={activeStage} onSelectStage={handleSelectStage} />
 
         {/* Main panel */}
         <main className="flex-grow p-5 md:p-8 space-y-5 overflow-y-auto">
@@ -235,22 +265,152 @@ export default function PipelinePage() {
             </div>
           </div>
 
+          {/* Prominent Investor Readiness Score Card */}
+          {typeof readinessScore === "number" && (
+            <div
+              className="rounded-2xl p-6 md:p-8 animate-fade-up flex flex-col md:flex-row items-center justify-between gap-6"
+              style={{
+                background: "linear-gradient(135deg, #0B1220 0%, #1A2333 100%)",
+                border: "1px solid rgba(201, 162, 39, 0.4)",
+                boxShadow: "0 8px 32px rgba(201, 162, 39, 0.12)",
+              }}
+            >
+              <div className="flex items-center space-x-5">
+                <div
+                  className="h-16 w-16 rounded-xl flex items-center justify-center font-mono text-2xl font-black shrink-0"
+                  style={{
+                    background: "linear-gradient(135deg, #C9A227 0%, #E5C158 100%)",
+                    color: "#0B1220",
+                    boxShadow: "0 4px 14px rgba(201, 162, 39, 0.3)",
+                  }}
+                >
+                  {readinessScore}
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2 mb-1">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A227] font-bold">
+                      Venture Assessment Summary
+                    </span>
+                    <span className="text-slate-600">•</span>
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-slate-400">
+                      Final Report
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-2xl font-bold text-white flex flex-wrap items-center gap-3">
+                    <span>Investor Readiness: {readinessScore}/100</span>
+                    {typeof starRating === "number" && (
+                      <span className="text-xl text-[#C9A227] tracking-widest">
+                        {"★".repeat(starRating) + "☆".repeat(5 - starRating)}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-300 font-sans mt-1">
+                    Synthesized score calculated across validation, IP conflict risk, market opportunity, and VC thesis matching.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3 shrink-0">
+                <div className="text-right">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-slate-400 block">
+                    Star Rating
+                  </span>
+                  <span className="font-mono text-lg font-bold text-[#C9A227]">
+                    {starRating ?? 5}/5 Stars
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile stage selector bar */}
+          <div className="flex md:hidden items-center overflow-x-auto space-x-2 pb-2 no-scrollbar border-b border-[var(--border-subtle)]">
+            {[1, 2, 3, 4, 5, 6, 7].map((num) => {
+              const status = state.agentStates[num];
+              const isSel = activeStage === num;
+              return (
+                <button
+                  key={num}
+                  onClick={() => handleSelectStage(num)}
+                  className={`px-3 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider shrink-0 transition-all cursor-pointer ${
+                    isSel
+                      ? "bg-[var(--accent-gold)] text-[#0B1220] font-bold"
+                      : status === "completed"
+                      ? "bg-[#111c35] text-[var(--text-primary)] border border-emerald-500/40"
+                      : status === "running"
+                      ? "bg-[var(--accent-gold-dim)] text-[var(--accent-gold)] border border-[var(--accent-gold)]"
+                      : "bg-[#0d1526] text-[var(--text-muted)] border border-[var(--border-subtle)]"
+                  }`}
+                >
+                  0{num}. {STAGE_META[num].name}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Section header */}
           <div className="flex items-center space-x-3 px-1">
             <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
-              Pipeline Stage Analysis Logs
+              Active Stage Analysis — 0{activeStage} of 07
             </span>
             <div className="flex-grow h-px" style={{ background: "var(--border-subtle)" }} />
           </div>
 
-          {/* Agent cards */}
-          <div className="space-y-4">
-            {[1, 2, 3, 4, 5, 6, 7].map(n => (
-              <div key={n}>{renderAgentCard(n)}</div>
-            ))}
+          {/* Single active Agent Card View with fade transition */}
+          <div key={activeStage} className="animate-fade-in transition-all duration-300">
+            {renderAgentCard(activeStage)}
           </div>
+
+          {/* PREV / NEXT Stage Navigation Controls */}
+          <div className="flex justify-between items-center w-full bg-white border border-[#E2E8F0] p-4 font-mono text-xs rounded-xl shadow-sm mt-4">
+            <button
+              onClick={() => handleSelectStage(Math.max(1, activeStage - 1))}
+              disabled={activeStage === 1}
+              className={`flex items-center space-x-2 px-4 py-2 border transition-all font-semibold rounded ${
+                activeStage === 1
+                  ? "text-slate-300 border-[#E2E8F0] cursor-not-allowed bg-[#F7F8FA]"
+                  : "text-[#0B1220] border-[#E2E8F0] hover:border-[#C9A227] hover:text-[#C9A227] bg-white cursor-pointer"
+              }`}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>PREV STAGE</span>
+            </button>
+
+            <div className="text-[#0B1220] font-semibold tracking-widest text-xs flex items-center space-x-2">
+              <span className="text-[#C9A227]">STAGE 0{activeStage} OF 07</span>
+              <span className="hidden sm:inline text-slate-400 font-sans text-xs">• {STAGE_META[activeStage]?.name}</span>
+            </div>
+
+            <button
+              onClick={() => handleSelectStage(Math.min(7, activeStage + 1))}
+              disabled={activeStage === 7}
+              className={`flex items-center space-x-2 px-4 py-2 border transition-all font-semibold rounded ${
+                activeStage === 7
+                  ? "text-slate-300 border-[#E2E8F0] cursor-not-allowed bg-[#F7F8FA]"
+                  : "text-[#0B1220] border-[#E2E8F0] hover:border-[#C9A227] hover:text-[#C9A227] bg-white cursor-pointer"
+              }`}
+            >
+              <span>NEXT STAGE</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
         </main>
       </div>
     </div>
+  );
+}
+
+export default function PipelinePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
+          <Loader2 className="h-7 w-7 animate-spin" style={{ color: "var(--accent-gold)" }} />
+        </div>
+      }
+    >
+      <PipelinePageContent />
+    </Suspense>
   );
 }

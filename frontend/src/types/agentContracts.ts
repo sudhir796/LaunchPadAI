@@ -37,6 +37,7 @@ export interface Agent2Output extends BaseAgentInput {
   similar_patents: SimilarPatent[];
   risk_level: 'low' | 'medium' | 'high' | string;
   notes: string;
+  sources?: string[];
 }
 
 // ==========================================
@@ -74,6 +75,7 @@ export interface Competitor {
 export interface Agent4Output extends BaseAgentInput {
   competitors: Competitor[];
   differentiation_opportunities: string;
+  sources?: string[];
 }
 
 // ==========================================
@@ -91,6 +93,7 @@ export interface Agent5Output extends BaseAgentInput {
   value_proposition: string;
   customer_segments: string[];
   channels: string[];
+  sources?: string[];
 }
 
 // ==========================================
@@ -110,6 +113,7 @@ export interface PitchSlide {
 
 export interface Agent6Output extends BaseAgentInput {
   slides: PitchSlide[];
+  sources?: string[];
 }
 
 // ==========================================
@@ -128,6 +132,9 @@ export interface MatchedInvestor {
 
 export interface Agent7Output extends BaseAgentInput {
   matched_investors: MatchedInvestor[];
+  sources?: string[];
+  investor_readiness_score?: number;
+  star_rating?: number;
 }
 
 // ==========================================

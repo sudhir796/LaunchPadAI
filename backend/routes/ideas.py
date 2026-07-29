@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from backend.database import get_db, SessionLocal
 from backend import models
 from backend import schemas
@@ -57,8 +57,20 @@ def create_idea(idea: schemas.IdeaCreate, background_tasks: BackgroundTasks, db:
     return db_idea
 
 @router.get("/", response_model=List[schemas.IdeaResponse])
-def get_ideas(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    ideas = db.query(models.Idea).offset(skip).limit(limit).all()
+def get_ideas(
+    limit: int = 20,
+    offset: int = 0,
+    skip: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    actual_offset = skip if skip is not None else offset
+    ideas = (
+        db.query(models.Idea)
+        .order_by(models.Idea.created_at.desc())
+        .offset(actual_offset)
+        .limit(limit)
+        .all()
+    )
     return ideas
 
 @router.get("/{idea_id}", response_model=schemas.IdeaDetailResponse)
@@ -116,6 +128,9 @@ def download_idea_report(idea_id: str, db: Session = Depends(get_db)):
         if record.output_json:
             agent_outputs_map[record.agent_name] = record.output_json
 
+    from backend.readiness_calculator import calculate_investor_readiness_score
+    readiness = calculate_investor_readiness_score(agent_outputs_map)
+
     idea_data = {
         "id": idea.id,
         "title": idea.title,
@@ -124,6 +139,51 @@ def download_idea_report(idea_id: str, db: Session = Depends(get_db)):
         "region": idea.region,
         "sector": idea.sector,
         "created_at": str(idea.created_at),
+        "investor_readiness_score": readiness["investor_readiness_score"],
+        "star_rating": readiness["star_rating"]
+    }
+
+    try:
+        from backend import report_generator
+        from fastapi import Response
+        pdf_bytes = report_generator.build_pdf_report(idea_data, agent_outputs_map)
+        filename = f"LaunchPad_Report_{idea_id[:8]}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF report: {str(e)}")
+
+
+@router.post("/{idea_id}/export-pdf")
+def export_idea_pdf(idea_id: str, db: Session = Depends(get_db)):
+    idea = db.query(models.Idea).filter(models.Idea.id == idea_id).first()
+    if not idea:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    agent_records = db.query(models.AgentOutput).filter(models.AgentOutput.idea_id == idea_id).all()
+    agent_outputs_map = {}
+    for record in agent_records:
+        if record.output_json:
+            agent_outputs_map[record.agent_name] = record.output_json
+
+    from backend.readiness_calculator import calculate_investor_readiness_score
+    readiness = calculate_investor_readiness_score(agent_outputs_map)
+
+    idea_data = {
+        "id": idea.id,
+        "title": idea.title,
+        "description": idea.description,
+        "target_market": idea.target_market,
+        "region": idea.region,
+        "sector": idea.sector,
+        "created_at": str(idea.created_at),
+        "investor_readiness_score": readiness["investor_readiness_score"],
+        "star_rating": readiness["star_rating"]
     }
 
     try:

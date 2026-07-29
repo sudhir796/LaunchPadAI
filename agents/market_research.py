@@ -37,6 +37,10 @@ and reference sources for a startup idea.
 
 You must ground your findings strictly in the provided web search results and market evidence.
 
+CRITICAL INSTRUCTION: ALL JSON fields MUST be valid, non-null, non-empty strings (or array of non-empty strings for sources). \
+Even if the idea is vague or lacks direct market data, you MUST provide a reasoned estimate or explicitly state \
+"Insufficient information to estimate — [brief reason]" rather than returning null, null values, or omitting the field entirely.
+
 You must respond with ONLY a valid JSON object, no other text, no markdown fences. \
 The JSON object must have exactly these fields:
 {
@@ -99,17 +103,34 @@ Analyze the market landscape for this idea based on the search evidence provided
         agent_name="market_research",
         idea_id=idea_id,
     )
+
+    print(f"\n[MarketResearch] Raw LLM Response for idea '{idea_id}':\n{raw_response}\n")
+
     result = extract_json(raw_response)
 
-    # Safety nets
+    print(f"[MarketResearch] Parsed JSON result for idea '{idea_id}':\n{json.dumps(result, indent=2)}\n")
+
+    # Guarantee contract invariants & safety backfills
     result["idea_id"] = idea_id
 
-    # Guarantee sources is a list of string URLs
+    text_fields = {
+        "market_size_estimate": "Insufficient information to estimate market size — vague or custom niche market concept.",
+        "growth_trends": "Growth trends data unavailable for this specific niche.",
+        "target_demographics": "Target customer demographics to be defined during validation phase.",
+    }
+
+    for field, fallback_text in text_fields.items():
+        val = result.get(field)
+        if val is None or not isinstance(val, str) or not val.strip():
+            print(f"[MarketResearch] WARNING: Field '{field}' is missing or null in model output. Filling placeholder.")
+            result[field] = fallback_text
+
+    # Guarantee sources is a list of non-null string URLs
     if "sources" not in result or not isinstance(result["sources"], list):
         result["sources"] = list(set(retrieved_urls))
     else:
-        # Merge retrieved URLs to ensure real source links exist
-        all_sources = list(dict.fromkeys(result["sources"] + retrieved_urls))
+        valid_sources = [s for s in result["sources"] if isinstance(s, str) and s.strip()]
+        all_sources = list(dict.fromkeys(valid_sources + retrieved_urls))
         result["sources"] = all_sources
 
     return result

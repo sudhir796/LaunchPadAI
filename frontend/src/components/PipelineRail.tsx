@@ -21,14 +21,20 @@ const STAGES: Stage[] = [
   { number: 7, id: "agent7", name: "Investor Matching",   domain: "Recommendation" },
 ];
 
-export const PipelineRail: React.FC = () => {
+interface PipelineRailProps {
+  activeStage?: number;
+  onSelectStage?: (stageNum: number) => void;
+}
+
+export const PipelineRail: React.FC<PipelineRailProps> = ({ activeStage = 1, onSelectStage }) => {
   const { state } = usePipeline();
 
   const completedCount = Object.values(state.agentStates).filter(s => s === "completed").length;
 
-  const handleClick = (id: string, isCompleted: boolean) => {
-    if (!isCompleted) return;
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const handleClick = (stageNum: number) => {
+    if (onSelectStage) {
+      onSelectStage(stageNum);
+    }
   };
 
   return (
@@ -72,23 +78,34 @@ export const PipelineRail: React.FC = () => {
             const isQueued    = status === "queued";
             const isRunning   = status === "running";
             const isCompleted = status === "completed";
+            const isSelected  = activeStage === stage.number;
 
             return (
               <button
                 key={stage.number}
-                onClick={() => handleClick(stage.id, isCompleted)}
-                disabled={!isCompleted}
-                className="relative flex items-start space-x-3.5 w-full text-left py-2.5 px-2 rounded-lg transition-all duration-300 group hover:translate-x-1 disabled:hover:translate-x-0"
+                onClick={() => handleClick(stage.number)}
+                className="relative flex items-start space-x-3.5 w-full text-left py-2.5 px-2 rounded-lg transition-all duration-300 group cursor-pointer"
                 style={{
-                  cursor: isCompleted ? "pointer" : "default",
-                  background: isRunning ? "var(--accent-gold-dim)" : "transparent",
+                  background: isSelected
+                    ? "var(--surface-elevated)"
+                    : isRunning
+                    ? "var(--accent-gold-dim)"
+                    : "transparent",
+                  border: isSelected
+                    ? "1px solid var(--accent-gold)"
+                    : "1px solid transparent",
+                  boxShadow: isSelected ? "0 0 14px rgba(212,168,67,0.15)" : "none",
                 }}
               >
                 {/* Dot */}
                 <div
                   className="relative z-10 flex items-center justify-center w-7 h-7 shrink-0 rounded-full text-[10px] font-mono font-bold transition-all duration-300"
                   style={
-                    isCompleted ? {
+                    isSelected ? {
+                      background: "var(--accent-gold)",
+                      color: "#06080f",
+                      boxShadow: "0 0 0 3px rgba(212,168,67,0.25), 0 0 12px rgba(212,168,67,0.4)",
+                    } : isCompleted ? {
                       background: "var(--accent-gold)",
                       color: "#06080f",
                       boxShadow: "0 0 0 3px rgba(212,168,67,0.2), 0 0 10px rgba(212,168,67,0.3)",
@@ -118,7 +135,7 @@ export const PipelineRail: React.FC = () => {
                   <span
                     className="font-semibold text-sm leading-tight transition-colors"
                     style={{
-                      color: isCompleted
+                      color: isSelected || isCompleted
                         ? "var(--text-primary)"
                         : isRunning
                         ? "var(--accent-gold)"
@@ -130,12 +147,11 @@ export const PipelineRail: React.FC = () => {
                   <span className="font-mono text-[9px] uppercase tracking-widest mt-0.5" style={{ color: "var(--text-muted)" }}>
                     {stage.domain}
                   </span>
-                  {isCompleted && (
+                  {isSelected && (
                     <span
-                      className="font-mono text-[9px] mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: "var(--accent-gold)" }}
+                      className="font-mono text-[9px] mt-1 text-[#C9A227] font-semibold"
                     >
-                      ↑ Jump to section
+                      Active View →
                     </span>
                   )}
                 </div>

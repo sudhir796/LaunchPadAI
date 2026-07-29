@@ -59,10 +59,13 @@ async def run(input_data: dict) -> dict:
     idea_description = input_data.get("idea_description", "")
     keywords = input_data.get("keywords", [])
 
-    # Step 1: Query real USPTO PatentsView API
+    # Step 1: Query real USPTO PatentsView / Google Patents search
     patentsview_results = await asyncio.to_thread(
         query_patentsview, idea_description, keywords
     )
+
+    print(f"\n[DEBUG LOG] RAW PATENTSVIEW / PATENT SEARCH RESPONSE ({len(patentsview_results)} items):")
+    print(json.dumps(patentsview_results, indent=2))
 
     # Format retrieved real patents as evidence for LLM reasoning
     if patentsview_results:
@@ -105,8 +108,11 @@ Analyze the patent/prior art landscape for this idea based strictly on the USPTO
     # Step 3: Enforce strict contract mapping and safety nets
     result["idea_id"] = idea_id
 
-    # Always use the real mapped PatentsView search results for similar_patents
+    # Always use the real mapped search results for similar_patents
     result["similar_patents"] = patentsview_results
+
+    print(f"\n[DEBUG LOG] FINAL SIMILAR_PATENTS ARRAY RETURNED BY AGENT 2 ({len(result['similar_patents'])} items):")
+    print(json.dumps(result["similar_patents"], indent=2))
 
     # Ensure risk_level is standard ("low", "medium", "high")
     valid_risks = ["low", "medium", "high"]

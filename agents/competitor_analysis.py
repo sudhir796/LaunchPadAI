@@ -119,6 +119,13 @@ Analyze the competitive landscape and return the JSON object as instructed."""
     if "competitors" not in result or not isinstance(result["competitors"], list):
         result["competitors"] = []
 
+    retrieved_urls = [r["url"] for r in search_results if isinstance(r, dict) and r.get("url")]
+    if "sources" not in result or not isinstance(result["sources"], list):
+        result["sources"] = retrieved_urls
+    else:
+        all_sources = list(dict.fromkeys(result["sources"] + retrieved_urls))
+        result["sources"] = all_sources
+
     return result
 
 

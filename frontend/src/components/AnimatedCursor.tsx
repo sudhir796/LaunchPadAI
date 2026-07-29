@@ -36,13 +36,11 @@ const BURST_COUNT     = 8;
 let globalId = 0;
 const nextId = () => ++globalId;
 
-// Vivid color palette — pops on BOTH dark AND light backgrounds
+// Single gold spark color palette
 const STAR_COLORS = [
-  { inner: "#fff9e6", mid: "#f0c060", outer: "#c8872a" },   // gold
-  { inner: "#e0f8ff", mid: "#00d4ff", outer: "#0060a8" },   // cyan
-  { inner: "#ffe0f8", mid: "#ff40d0", outer: "#8800a0" },   // magenta
-  { inner: "#e8ffe0", mid: "#60ff80", outer: "#008830" },   // lime
-  { inner: "#fff0e0", mid: "#ff8820", outer: "#a04000" },   // orange
+  { inner: "#ffffff", mid: "#f0c060", outer: "#c9a227" },   // bright white-gold
+  { inner: "#fffdf0", mid: "#d4a843", outer: "#b8891e" },   // rich warm gold
+  { inner: "#fff9e6", mid: "#e5c158", outer: "#a67c1e" },   // champagne gold
 ];
 
 /* ─────────────────────────────────────────────────────────
@@ -127,7 +125,7 @@ const CursorDot = ({
           willChange: "transform",
           transformOrigin: "0 0",
           filter: linkHovered
-            ? "drop-shadow(0 0 4px #00d4ff) drop-shadow(0 0 8px rgba(0,212,255,0.6))"
+            ? "drop-shadow(0 0 6px #f0c060) drop-shadow(0 0 10px rgba(212,168,67,0.7))"
             : "drop-shadow(0 0 3px rgba(0,0,0,0.9)) drop-shadow(0 0 5px rgba(240,192,96,0.5))",
         }}
       >
@@ -146,11 +144,11 @@ const CursorDot = ({
             strokeWidth="1"
             strokeLinejoin="round"
           />
-          {/* Bright fill — gold with cyan tint on hover */}
+          {/* Bright fill — gold with bright gold tint on hover */}
           <path
             d="M3 2 L3 15 L7 11 L10 18 L12.5 17 L9.5 10 L14.5 10 Z"
-            fill={linkHovered ? "#00d4ff" : "#f0c060"}
-            stroke={linkHovered ? "rgba(0,212,255,0.4)" : "rgba(255,255,255,0.5)"}
+            fill={linkHovered ? "#f0c060" : "#d4a843"}
+            stroke={linkHovered ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.5)"}
             strokeWidth="0.5"
             strokeLinejoin="round"
           />
@@ -359,21 +357,21 @@ export const AnimatedCursor: React.FC = () => {
             zIndex: 99997,
           }}
         >
-          {/* Cyan outer ring */}
+          {/* Outer gold ring */}
           <div
             style={{
               position: "absolute",
               width: 70 * burst.progress,
               height: 70 * burst.progress,
               borderRadius: "50%",
-              border: `2px solid rgba(0,212,255,${1 - burst.progress})`,
+              border: `2px solid rgba(212,168,67,${1 - burst.progress})`,
               transform: "translate(-50%, -50%)",
-              boxShadow: `0 0 ${14 * (1 - burst.progress)}px rgba(0,212,255,${
+              boxShadow: `0 0 ${14 * (1 - burst.progress)}px rgba(212,168,67,${
                 0.7 * (1 - burst.progress)
               })`,
             }}
           />
-          {/* Gold inner ring */}
+          {/* Inner gold ring */}
           <div
             style={{
               position: "absolute",
