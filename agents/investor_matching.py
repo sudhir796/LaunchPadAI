@@ -88,6 +88,9 @@ Real Investor Dataset Pool:
 You must select 2-4 investors from this dataset that best match the startup's sector, stage, and business model, \
 and provide a strategic thesis rationale for each.
 
+CONCISENESS DIRECTIVE:
+- Be concise in your reasoning — 1-2 sentences per field maximum.
+
 You must respond with ONLY a valid JSON object, no other text, no markdown fences. \
 The JSON object must have exactly these fields:
 {
@@ -155,7 +158,7 @@ Match the 2-4 best target investors from the dataset for this startup and return
         call_llm,
         SYSTEM_PROMPT,
         user_prompt,
-        max_tokens=1000,
+        max_tokens=1500,
         agent_name="investor_matching",
         idea_id=idea_id,
     )

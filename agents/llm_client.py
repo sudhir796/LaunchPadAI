@@ -108,9 +108,11 @@ def call_llm(
     max_tokens: int = 1024,
     agent_name: str = None,
     idea_id: str = None,
+    _is_retry: bool = False,
 ) -> str:
     """
     Sends a prompt to the LLM with agent-specific provider routing, key rotation, and rate-limit fallback.
+    If JSON parsing fails due to response truncation, automatically retries ONCE with 50% increased max_tokens.
     Returns the raw text response.
     """
     if agent_name and idea_id and is_cache_enabled():
@@ -169,7 +171,6 @@ def call_llm(
                         break  # Rotate to next provider in priority map
                     else:
                         print(f"[llm_client] Warning: Provider '{provider}' key #{idx} ({masked_key}) failed with non-rate-limit error: {e}")
-                        # Re-raise auth or fatal exceptions if not rate-limited
                         raise e
 
             if raw_text:
@@ -180,13 +181,28 @@ def call_llm(
         raw_text = _call_mock(system_prompt, user_prompt)
         used_provider = "mock"
 
-    # Post-process: log usage and save to cache
-    if agent_name and idea_id:
-        log_api_usage(agent_name, idea_id, used_provider or "unknown")
+    # Post-process: attempt JSON extraction & retry on truncation error if first attempt
+    if raw_text:
         try:
             parsed_result = extract_json(raw_text, provider=used_provider)
-            save_to_cache(agent_name, idea_id, parsed_result)
+            if agent_name and idea_id:
+                log_api_usage(agent_name, idea_id, used_provider or "unknown")
+                save_to_cache(agent_name, idea_id, parsed_result)
         except Exception as e:
+            if not _is_retry:
+                retry_tokens = int(max_tokens * 1.5)
+                print(f"[TRUNCATION RETRY] JSON extraction failed for {agent_name or 'request'} (max_tokens={max_tokens}): {e}. Retrying ONCE with max_tokens={retry_tokens}...")
+                try:
+                    return call_llm(
+                        system_prompt,
+                        user_prompt,
+                        max_tokens=retry_tokens,
+                        agent_name=agent_name,
+                        idea_id=idea_id,
+                        _is_retry=True,
+                    )
+                except Exception as retry_err:
+                    print(f"[TRUNCATION RETRY] Retry attempt failed for {agent_name or 'request'}: {retry_err}")
             print(f"[CACHE] Warning: Failed to parse and cache LLM response for {agent_name}/{idea_id}: {e}")
 
     return raw_text

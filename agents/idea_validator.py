@@ -52,6 +52,9 @@ WEAKNESSES GUIDANCE:
 - You MUST actively inspect for vagueness, lack of specificity, and missing technical mechanisms.
 - Include vagueness or underspecified details as explicit items in the "weaknesses" list whenever present.
 
+CONCISENESS DIRECTIVE:
+- Be concise in your reasoning — 1-2 sentences per field maximum unless more detail is explicitly requested.
+
 You must respond with ONLY a valid JSON object, no other text, no markdown fences. \
 The JSON object must have exactly these fields:
 {
@@ -82,7 +85,7 @@ Evaluate this idea strictly using the scoring rubric and directives provided, an
         call_llm,
         SYSTEM_PROMPT,
         user_prompt,
-        max_tokens=800,
+        max_tokens=1500,
         agent_name="idea_validator",
         idea_id=idea_id,
     )

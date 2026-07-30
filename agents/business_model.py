@@ -44,6 +44,9 @@ acting as the fifth stage in an automated startup accelerator pipeline. Your tas
 to synthesize market research and competitive intelligence into a high-leverage Business Model Canvas \
 tailored for early-stage investor evaluation.
 
+CONCISENESS DIRECTIVE:
+- Be concise in your reasoning — 1-2 sentences per field or short list items maximum.
+
 You must respond with ONLY a valid JSON object, no other text, no markdown fences. \
 The JSON object must have exactly these fields:
 {
@@ -81,7 +84,7 @@ Generate the strategic business model canvas and return the JSON object as instr
         call_llm,
         SYSTEM_PROMPT,
         user_prompt,
-        max_tokens=1000,
+        max_tokens=1500,
         agent_name="business_model",
         idea_id=idea_id,
     )

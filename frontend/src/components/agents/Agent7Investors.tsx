@@ -29,13 +29,35 @@ export const Agent7Investors: React.FC<Props> = ({ data }) => {
     if (!state.idea_id) return;
     setDownloading(true);
     setErrorMsg(null);
+
+    const baseUrl = API_BASE_URL.replace(/\/$/, "");
+    const altBaseUrl = baseUrl.includes("127.0.0.1")
+      ? baseUrl.replace("127.0.0.1", "localhost")
+      : baseUrl.replace("localhost", "127.0.0.1");
+
     try {
-      const response = await fetch(`${API_BASE_URL}/ideas/${state.idea_id}/export-pdf`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Export failed");
+      let response: Response | null = null;
+
+      try {
+        response = await fetch(`${baseUrl}/ideas/${state.idea_id}/export-pdf`, { method: "POST" });
+      } catch (err1) {
+        try {
+          response = await fetch(`${altBaseUrl}/ideas/${state.idea_id}/export-pdf`, { method: "POST" });
+        } catch (err2) {
+          try {
+            response = await fetch(`${baseUrl}/ideas/${state.idea_id}/report`);
+          } catch (err3) {
+            response = null;
+          }
+        }
       }
+
+      if (!response || !response.ok) {
+        const errorDetail = response ? await response.text().catch(() => "") : "Backend server unreachable";
+        console.error(`[Agent7Investors] PDF Export Failed (${response?.status || "network error"}):`, errorDetail);
+        throw new Error(errorDetail || "Export failed");
+      }
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -45,8 +67,9 @@ export const Agent7Investors: React.FC<Props> = ({ data }) => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+      setErrorMsg(null);
     } catch (e: any) {
-      console.error("Error exporting PDF report:", e);
+      console.error("Error exporting PDF report:", e?.message || e);
       setErrorMsg("Export Failed — Retry");
     } finally {
       setTimeout(() => setDownloading(false), 800);

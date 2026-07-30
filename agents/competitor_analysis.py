@@ -42,6 +42,9 @@ strengths and weaknesses, and pinpoint strategic differentiation opportunities f
 
 You must ground your competitor analysis in real companies/apps found in the web search evidence.
 
+CONCISENESS DIRECTIVE:
+- Be concise in your reasoning — 1-2 sentences per field maximum.
+
 You must respond with ONLY a valid JSON object, no other text, no markdown fences. \
 The JSON object must have exactly these fields:
 {
@@ -108,7 +111,7 @@ Analyze the competitive landscape and return the JSON object as instructed."""
         call_llm,
         SYSTEM_PROMPT,
         user_prompt,
-        max_tokens=1000,
+        max_tokens=1500,
         agent_name="competitor_analysis",
         idea_id=idea_id,
     )

@@ -33,6 +33,9 @@ acting as the sixth stage in an automated startup accelerator pipeline. Your tas
 to synthesize all prior agent findings (validation, market size, competitors, business model) \
 into a compelling, investor-grade 6-8 slide pitch deck outline.
 
+CONCISENESS DIRECTIVE:
+- Be concise in slide contents — 2-3 bullet points or 2 sentences maximum per slide so responses stay tight and high-impact.
+
 You must respond with ONLY a valid JSON object, no other text, no markdown fences. \
 The JSON object must have exactly these fields:
 {
@@ -74,7 +77,7 @@ Synthesize this comprehensive startup intelligence into an investor-ready pitch 
         call_llm,
         SYSTEM_PROMPT,
         user_prompt,
-        max_tokens=1500,
+        max_tokens=2500,
         agent_name="pitch_deck",
         idea_id=idea_id,
     )

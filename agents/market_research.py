@@ -99,7 +99,7 @@ Analyze the market landscape for this idea based on the search evidence provided
         call_llm,
         SYSTEM_PROMPT,
         user_prompt,
-        max_tokens=1000,
+        max_tokens=1500,
         agent_name="market_research",
         idea_id=idea_id,
     )

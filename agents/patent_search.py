@@ -47,6 +47,19 @@ The JSON object must have exactly these fields:
       "summary": "<1-2 sentence summary of what it is and how it overlaps with the idea>",
       "source_url": "<Google Patents URL>"
     }
+CRITICAL DIRECTIVES:
+- Be concise in your reasoning — 1-2 sentences per field maximum unless more detail is explicitly requested.
+
+You must respond with ONLY a valid JSON object, no other text, no markdown fences. \
+The JSON object must have exactly these fields:
+{
+  "idea_id": "<same idea_id passed to you>",
+  "similar_patents": [
+    {
+      "title": "<title of similar patent retrieved>",
+      "summary": "<1-2 sentence technical summary>",
+      "source_url": "<real URL from patent search or https://patents.google.com>"
+    }
   ],
   "risk_level": "<must be exactly one of: 'low', 'medium', or 'high'>",
   "notes": "<2-3 sentence overview of patentability, IP risks, and recommendations for freedom-to-operate>"
@@ -99,7 +112,7 @@ Analyze the patent/prior art landscape for this idea based strictly on the USPTO
         call_llm,
         SYSTEM_PROMPT,
         user_prompt,
-        max_tokens=1000,
+        max_tokens=1500,
         agent_name="patent_search",
         idea_id=idea_id,
     )
